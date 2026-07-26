@@ -1,5 +1,5 @@
 // MapVisualizer.jsx
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo, memo } from "react";
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from "react-leaflet";
 import L from "leaflet";
 import { warehouses, edges, warehouseMap } from "../data/data";
@@ -32,8 +32,7 @@ function FitBoundsOnPath({ pathNodeIds }) {
 
 /**
  * Progressively reveals the highlighted path's polyline segments,
- * rather than snapping the full route in at once. Resets and
- * re-runs whenever the path identity changes.
+ * rather than snapping the full route in at once.
  */
 function useAnimatedPath(pathNodeIds) {
   const [visibleCount, setVisibleCount] = useState(0);
@@ -68,17 +67,20 @@ function useAnimatedPath(pathNodeIds) {
   return visibleCount;
 }
 
-export default function MapVisualizer({ highlightedPath }) {
+function MapVisualizer({ highlightedPath }) {
   const [tileError, setTileError] = useState(false);
   const visibleSegments = useAnimatedPath(highlightedPath);
 
-  const pathEdgeKeys = new Set();
-  if (highlightedPath && highlightedPath.length > 1) {
-    for (let i = 0; i < highlightedPath.length - 1; i++) {
-      pathEdgeKeys.add(`${highlightedPath[i]}-${highlightedPath[i + 1]}`);
-      pathEdgeKeys.add(`${highlightedPath[i + 1]}-${highlightedPath[i]}`);
+  const pathEdgeKeys = useMemo(() => {
+    const keys = new Set();
+    if (highlightedPath && highlightedPath.length > 1) {
+      for (let i = 0; i < highlightedPath.length - 1; i++) {
+        keys.add(`${highlightedPath[i]}-${highlightedPath[i + 1]}`);
+        keys.add(`${highlightedPath[i + 1]}-${highlightedPath[i]}`);
+      }
     }
-  }
+    return keys;
+  }, [highlightedPath]);
 
   return (
     <div className="absolute inset-0 z-0">
@@ -103,7 +105,6 @@ export default function MapVisualizer({ highlightedPath }) {
           }}
         />
 
-        {/* Base network: every available edge, thin and gray */}
         {edges.map((edge) => {
           const source = warehouseMap[edge.source];
           const target = warehouseMap[edge.target];
@@ -125,7 +126,6 @@ export default function MapVisualizer({ highlightedPath }) {
           );
         })}
 
-        {/* Animated highlighted path: segments reveal progressively */}
         {highlightedPath &&
           highlightedPath.length > 1 &&
           highlightedPath.slice(0, -1).map((nodeId, i) => {
@@ -159,3 +159,5 @@ export default function MapVisualizer({ highlightedPath }) {
     </div>
   );
 }
+
+export default memo(MapVisualizer);

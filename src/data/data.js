@@ -1,9 +1,4 @@
 // data.js
-// Static graph definition for the logistics network.
-// Distances are approximate real road distances (km), not straight-line.
-// Not every warehouse is directly connected — this forces Dijkstra to
-// actually route through intermediate hubs, which is the point.
-
 export const warehouses = [
   { id: "delhi",     name: "Delhi",     lat: 28.7041, lng: 77.1025 },
   { id: "mumbai",    name: "Mumbai",    lat: 19.0760, lng: 72.8777 },
@@ -13,9 +8,6 @@ export const warehouses = [
   { id: "chennai",   name: "Chennai",   lat: 13.0827, lng: 80.2707 },
 ];
 
-// Undirected weighted edges. Distance = road km (approx).
-// Hyderabad acts as the natural central hub, mirroring its real
-// position roughly in the geographic middle of these six cities.
 export const edges = [
   { source: "delhi",     target: "mumbai",    distance: 1424 },
   { source: "delhi",     target: "kolkata",   distance: 1472 },
@@ -29,7 +21,6 @@ export const edges = [
   { source: "chennai",   target: "kolkata",   distance: 1673 },
 ];
 
-// Convenience lookup map, useful in components that need coords by id.
 export const warehouseMap = warehouses.reduce((acc, w) => {
   acc[w.id] = w;
   return acc;
