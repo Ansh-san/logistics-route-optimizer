@@ -1,26 +1,23 @@
-// MultiStopPanel.jsx
+// ControlPanel.jsx
 import { memo } from "react";
-import { warehouses } from "../data/data";
 
-function MultiStopPanel({
-  startId,
-  selectedStops,
-  onStartChange,
-  onToggleStop,
+function ControlPanel({
+  warehouses,
+  source,
+  destination,
+  onSourceChange,
+  onDestinationChange,
   onCalculate,
   onReset,
   result,
   hasError,
+  isLoading,
   edgesLoading,
 }) {
-  const stopCandidates = warehouses.filter((w) => w.id !== startId);
-
   return (
     <div className="absolute top-4 left-4 z-10 w-80 rounded-2xl bg-white/90 backdrop-blur-md shadow-xl border border-gray-200 p-5">
-      <h1 className="text-lg font-semibold text-gray-800 mb-1">Multi-Stop Route</h1>
-      <p className="text-xs text-gray-500 mb-4">
-        Visit every selected warehouse in the shortest order
-      </p>
+      <h1 className="text-lg font-semibold text-gray-800 mb-1">Route Optimizer</h1>
+      <p className="text-xs text-gray-500 mb-4">Shortest path across the warehouse network</p>
 
       {edgesLoading && (
         <div className="mb-3 rounded-lg bg-gray-50 border border-gray-200 px-3 py-2 text-xs text-gray-500 flex items-center gap-2">
@@ -31,10 +28,10 @@ function MultiStopPanel({
 
       <div className="space-y-3">
         <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">Starting Warehouse</label>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Source</label>
           <select
-            value={startId}
-            onChange={(e) => onStartChange(e.target.value)}
+            value={source}
+            onChange={(e) => onSourceChange(e.target.value)}
             className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             {warehouses.map((w) => (
@@ -44,34 +41,25 @@ function MultiStopPanel({
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">
-            Stops to Visit ({selectedStops.length} selected)
-          </label>
-          <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
-            {stopCandidates.map((w) => (
-              <label
-                key={w.id}
-                className="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-700 cursor-pointer hover:bg-gray-50"
-              >
-                <input
-                  type="checkbox"
-                  checked={selectedStops.includes(w.id)}
-                  onChange={() => onToggleStop(w.id)}
-                  className="accent-blue-600"
-                />
-                {w.name}
-              </label>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Destination</label>
+          <select
+            value={destination}
+            onChange={(e) => onDestinationChange(e.target.value)}
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            {warehouses.map((w) => (
+              <option key={w.id} value={w.id}>{w.name}</option>
             ))}
-          </div>
+          </select>
         </div>
 
         <div className="flex gap-2">
           <button
             onClick={onCalculate}
-            disabled={selectedStops.length === 0}
+            disabled={source === destination || isLoading}
             className="flex-1 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white text-sm font-medium py-2.5 transition-colors"
           >
-            Optimize Route
+            {isLoading ? "Computing…" : "Calculate Optimal Route"}
           </button>
           <button
             onClick={onReset}
@@ -85,7 +73,7 @@ function MultiStopPanel({
 
       {hasError && (
         <div className="mt-4 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700">
-          No valid route connects all selected stops.
+          No route found between these warehouses.
         </div>
       )}
 
@@ -95,13 +83,11 @@ function MultiStopPanel({
             <span>Total Distance</span>
             <span className="font-semibold text-blue-700">{result.distance.toLocaleString()} km</span>
           </div>
-          <div className="mt-1 text-xs text-gray-500">
-            Optimal order: {result.order.map((id) => warehouses.find((w) => w.id === id)?.name).join(" → ")}
-          </div>
+          <div className="mt-1 text-xs text-gray-500 truncate">{result.path.join(" → ")}</div>
         </div>
       )}
     </div>
   );
 }
 
-export default memo(MultiStopPanel);
+export default memo(ControlPanel);

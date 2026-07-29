@@ -2,7 +2,6 @@
 import { useEffect, useRef, useState, useMemo, memo } from "react";
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from "react-leaflet";
 import L from "leaflet";
-import { warehouses, edges, warehouseMap } from "../data/data";
 
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -15,7 +14,7 @@ const INDIA_CENTER = [22.3511, 78.6677];
 const DEFAULT_ZOOM = 5;
 const ANIMATION_DURATION_MS = 900;
 
-function FitBoundsOnPath({ pathNodeIds }) {
+function FitBoundsOnPath({ pathNodeIds, warehouseMap }) {
   const map = useMap();
 
   useEffect(() => {
@@ -25,7 +24,7 @@ function FitBoundsOnPath({ pathNodeIds }) {
       return [w.lat, w.lng];
     });
     map.fitBounds(latLngs, { padding: [60, 60] });
-  }, [pathNodeIds, map]);
+  }, [pathNodeIds, map, warehouseMap]);
 
   return null;
 }
@@ -67,7 +66,7 @@ function useAnimatedPath(pathNodeIds) {
   return visibleCount;
 }
 
-function MapVisualizer({ highlightedPath }) {
+function MapVisualizer({ highlightedPath, edges, warehouses, warehouseMap }) {
   const [tileError, setTileError] = useState(false);
   const visibleSegments = useAnimatedPath(highlightedPath);
 
@@ -108,15 +107,19 @@ function MapVisualizer({ highlightedPath }) {
         {edges.map((edge) => {
           const source = warehouseMap[edge.source];
           const target = warehouseMap[edge.target];
+          if (!source || !target) return null;
           const isHighlighted = pathEdgeKeys.has(`${edge.source}-${edge.target}`);
+
+          // Use road geometry if available, otherwise straight line
+          const positions = edge.geometry || [
+            [source.lat, source.lng],
+            [target.lat, target.lng],
+          ];
 
           return (
             <Polyline
               key={`${edge.source}-${edge.target}`}
-              positions={[
-                [source.lat, source.lng],
-                [target.lat, target.lng],
-              ]}
+              positions={positions}
               pathOptions={{
                 color: isHighlighted ? "#2563eb" : "#9ca3af",
                 weight: isHighlighted ? 2 : 1.5,
@@ -130,15 +133,35 @@ function MapVisualizer({ highlightedPath }) {
           highlightedPath.length > 1 &&
           highlightedPath.slice(0, -1).map((nodeId, i) => {
             if (i >= visibleSegments) return null;
-            const source = warehouseMap[nodeId];
-            const target = warehouseMap[highlightedPath[i + 1]];
+            const nextId = highlightedPath[i + 1];
+
+            // Find the matching edge to use its road geometry
+            const matchingEdge = edges.find(
+              (e) =>
+                (e.source === nodeId && e.target === nextId) ||
+                (e.source === nextId && e.target === nodeId)
+            );
+
+            let positions;
+            if (matchingEdge?.geometry) {
+              // If the edge is reversed relative to the path direction, reverse the geometry
+              positions =
+                matchingEdge.source === nodeId
+                  ? matchingEdge.geometry
+                  : [...matchingEdge.geometry].reverse();
+            } else {
+              const src = warehouseMap[nodeId];
+              const tgt = warehouseMap[nextId];
+              positions = [
+                [src.lat, src.lng],
+                [tgt.lat, tgt.lng],
+              ];
+            }
+
             return (
               <Polyline
-                key={`highlight-${nodeId}-${highlightedPath[i + 1]}`}
-                positions={[
-                  [source.lat, source.lng],
-                  [target.lat, target.lng],
-                ]}
+                key={`highlight-${nodeId}-${nextId}`}
+                positions={positions}
                 pathOptions={{ color: "#2563eb", weight: 5, opacity: 0.9 }}
               />
             );
@@ -154,7 +177,7 @@ function MapVisualizer({ highlightedPath }) {
           </Marker>
         ))}
 
-        <FitBoundsOnPath pathNodeIds={highlightedPath} />
+        <FitBoundsOnPath pathNodeIds={highlightedPath} warehouseMap={warehouseMap} />
       </MapContainer>
     </div>
   );
