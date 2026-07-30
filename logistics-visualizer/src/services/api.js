@@ -51,3 +51,23 @@ export async function calculateMultiStop(startId, stopIds) {
   }
   return res.json();
 }
+
+/**
+ * Asks the server to compute the top-2 shortest paths (Yen's algorithm).
+ * @param {string} source
+ * @param {string} destination
+ * @returns {Promise<{ routes: Array<{ path: string[], distance: number }> }>}
+ */
+export async function compareRoutes(source, destination) {
+  const res = await fetch(`${API_BASE}/routes/compare`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ source, destination }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || `Compare routes failed: ${res.status}`);
+  }
+  return res.json();
+}
+

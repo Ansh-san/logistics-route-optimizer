@@ -76,9 +76,17 @@ class MinPriorityQueue {
 
 /**
  * Dijkstra's algorithm — finds the shortest path between two nodes.
+ * Also computes total durationMin from the enriched edge list (optional).
+ *
+ * @param {Array<{id: string}>} nodes
+ * @param {Array} edges - graph edges (used for adjacency)
+ * @param {string} startId
+ * @param {string} endId
+ * @param {Array} [enrichedEdges] - optional live edges with durationMin; if omitted durationMin is null
+ * @returns {{ path: string[], distance: number, durationMin: number|null } | null}
  */
-export function findShortestPath(nodes, edges, startId, endId) {
-  if (startId === endId) return { path: [startId], distance: 0 };
+export function findShortestPath(nodes, edges, startId, endId, enrichedEdges) {
+  if (startId === endId) return { path: [startId], distance: 0, durationMin: 0 };
 
   const adjacency = getAdjacencyList(nodes, edges);
   if (!adjacency[startId] || !adjacency[endId]) return null;
@@ -123,7 +131,27 @@ export function findShortestPath(nodes, edges, startId, endId) {
     step = previous[step];
   }
 
-  return { path, distance: distances[endId] };
+  // Compute total durationMin from enriched edges (if provided)
+  let durationMin = null;
+  if (enrichedEdges && path.length >= 2) {
+    let total = 0;
+    let allKnown = true;
+    for (let i = 0; i < path.length - 1; i++) {
+      const a = path[i];
+      const b = path[i + 1];
+      const edge = enrichedEdges.find(
+        (e) => (e.source === a && e.target === b) || (e.target === a && e.source === b)
+      );
+      if (!edge || edge.durationMin == null) {
+        allKnown = false;
+        break;
+      }
+      total += edge.durationMin;
+    }
+    if (allKnown) durationMin = total;
+  }
+
+  return { path, distance: distances[endId], durationMin };
 }
 
 // ---------------------------------------------------------------------
@@ -214,3 +242,87 @@ export function solveMultiStopRoute(nodes, edges, startId, stopIds) {
 
   return { order: best.order, path: fullPath, distance: best.distance, legs: best.legs };
 }
+
+// ----- Yen's k-shortest loopless paths -----
+
+/**
+ * Yen's algorithm — finds the k shortest loopless paths between two nodes.
+ * Builds on the existing findShortestPath (Dijkstra) as its subroutine.
+ *
+ * @param {Array<{id: string}>} nodes
+ * @param {Array<{source: string, target: string, distance: number}>} edges
+ * @param {string} startId
+ * @param {string} endId
+ * @param {number} k - number of paths to find (e.g. 2)
+ * @returns {Array<{path: string[], distance: number}>} sorted by distance ascending,
+ *          length may be less than k if fewer distinct paths exist
+ */
+export function findKShortestPaths(nodes, edges, startId, endId, k) {
+  const firstPath = findShortestPath(nodes, edges, startId, endId);
+  if (!firstPath) return [];
+
+  const A = [firstPath]; // finalized shortest paths, in order
+  const B = [];          // candidate paths, sorted by distance when picked
+
+  for (let ki = 1; ki < k; ki++) {
+    const prevPath = A[ki - 1].path;
+
+    for (let i = 0; i < prevPath.length - 1; i++) {
+      const spurNode = prevPath[i];
+      const rootPath = prevPath.slice(0, i + 1);
+
+      // Remove edges that would recreate already-found paths sharing this root
+      const edgesToRemove = new Set();
+      for (const foundPath of A) {
+        if (
+          foundPath.path.length > i &&
+          JSON.stringify(foundPath.path.slice(0, i + 1)) === JSON.stringify(rootPath)
+        ) {
+          edgesToRemove.add(`${foundPath.path[i]}|${foundPath.path[i + 1]}`);
+        }
+      }
+
+      // Remove root path nodes (except spur node) from consideration to keep paths loopless
+      const nodesToRemove = new Set(rootPath.slice(0, -1));
+
+      const filteredEdges = edges.filter((e) => {
+        const key1 = `${e.source}|${e.target}`;
+        const key2 = `${e.target}|${e.source}`;
+        if (edgesToRemove.has(key1) || edgesToRemove.has(key2)) return false;
+        if (nodesToRemove.has(e.source) || nodesToRemove.has(e.target)) return false;
+        return true;
+      });
+
+      const spurPathResult = findShortestPath(nodes, filteredEdges, spurNode, endId);
+      if (!spurPathResult) continue;
+
+      const rootDistance = rootPath.slice(0, -1).reduce((sum, nodeId, idx) => {
+        const nextNode = rootPath[idx + 1];
+        const edge = edges.find(
+          (e) =>
+            (e.source === nodeId && e.target === nextNode) ||
+            (e.target === nodeId && e.source === nextNode)
+        );
+        return sum + (edge ? edge.distance : 0);
+      }, 0);
+
+      const totalPath = [...rootPath.slice(0, -1), ...spurPathResult.path];
+      const totalDistance = rootDistance + spurPathResult.distance;
+
+      const alreadyExists =
+        A.some((p) => JSON.stringify(p.path) === JSON.stringify(totalPath)) ||
+        B.some((p) => JSON.stringify(p.path) === JSON.stringify(totalPath));
+
+      if (!alreadyExists) {
+        B.push({ path: totalPath, distance: totalDistance });
+      }
+    }
+
+    if (B.length === 0) break;
+
+    B.sort((a, b) => a.distance - b.distance);
+    A.push(B.shift());
+  }
+
+  return A;
+}
