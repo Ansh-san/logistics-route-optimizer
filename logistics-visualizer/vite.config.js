@@ -18,8 +18,10 @@ export default defineConfig({
     minify: "esbuild",
     rollupOptions: {
       output: {
-        manualChunks: {
-          leaflet: ["leaflet", "react-leaflet"],
+        manualChunks(id) {
+          if (id.includes("node_modules/leaflet") || id.includes("node_modules/react-leaflet")) {
+            return "leaflet";
+          }
         },
       },
     },
