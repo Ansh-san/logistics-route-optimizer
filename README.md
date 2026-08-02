@@ -111,7 +111,7 @@ Open **http://localhost:5173** in your browser.
 
 ## 📸 Preview
 
-![Demo](ezgif.com-crop.gif)
+![Demo](demo.gif.gif)
 
 ---
 
