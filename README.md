@@ -4,6 +4,10 @@
 
 Plan optimal delivery routes across a network of Indian warehouses, compare alternate paths, optimize multi-stop delivery orders, and watch it all animate on a live map with real road geometry — not just straight lines between cities.
 
+🔗 **[Live Demo](https://logistics-route-optimizer.netlify.app)**
+
+> **Note:** The backend is hosted on Render's free tier, which spins down after periods of inactivity. The **first** request after idle time may take 30–60 seconds to wake the server back up — this is expected, not a bug. Every request after that is fast.
+
 ---
 
 ## ✨ Features
@@ -107,7 +111,7 @@ Open **http://localhost:5173** in your browser.
 
 ## 📸 Preview
 
-> _Add a screenshot or GIF of the app here — a screen recording of Compare Mode or the animated truck route works great._
+![Demo](assets/demo.gif)
 
 ---
 
