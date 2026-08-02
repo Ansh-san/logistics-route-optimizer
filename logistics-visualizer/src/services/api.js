@@ -2,7 +2,10 @@
 // All routing computation is now done server-side; the frontend
 // just fetches the graph and requests route solutions.
 
-const API_BASE = "/api"; // Proxied to Express by Vite dev server
+// In production (Netlify), VITE_API_BASE_URL must be set to the Render backend URL,
+// e.g. https://logistics-route-optimizer-api.onrender.com/api
+// During local dev, it falls back to "/api" which Vite proxies to localhost:5000.
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "/api";
 
 /**
  * Fetches the full warehouse graph (nodes + edges) from the API.
